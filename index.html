@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Office 50% Tracker</title>
+  <meta name="theme-color" content="#111827" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:#0b1220; color:#e5e7eb; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 18px; }
+    .card { background:#111827; border:1px solid #1f2937; border-radius: 14px; padding: 14px; margin: 12px 0; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    @media (min-width: 720px){ .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .metric { padding: 10px; border-radius: 12px; background:#0b1020; border:1px solid #1f2937; }
+    .metric .label { font-size: 12px; color:#9ca3af; }
+    .metric .value { font-size: 20px; margin-top: 2px; }
+    .row { display:flex; gap:10px; flex-wrap: wrap; align-items: end; }
+    label { font-size: 12px; color:#9ca3af; display:block; margin-bottom: 6px; }
+    input, select, button {
+      background:#0b1020; color:#e5e7eb; border:1px solid #1f2937;
+      padding: 10px; border-radius: 10px; font-size: 14px;
+    }
+    button { cursor:pointer; }
+    button.primary { background:#2563eb; border-color:#1d4ed8; }
+    button.danger { background:#b91c1c; border-color:#7f1d1d; }
+    .calendar { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+    .dow { text-align:center; font-size: 12px; color:#9ca3af; padding: 6px 0; }
+    .day {
+      border-radius: 10px; border:1px solid #1f2937; background:#0b1020;
+      padding: 8px; min-height: 56px; position: relative;
+    }
+    .day.muted { opacity: 0.35; }
+    .day .num { font-size: 12px; color:#9ca3af; }
+    .tag {
+      position:absolute; right:6px; top:6px; font-size: 11px; padding: 2px 6px; border-radius: 999px;
+      border:1px solid #1f2937; background:#111827;
+    }
+    .tag.in { background:#064e3b; border-color:#065f46; }
+    .tag.out { background:#3f1d1d; border-color:#7f1d1d; }
+    .tag.req { background:#1e3a8a; border-color:#1d4ed8; }
+    .small { font-size: 12px; color:#9ca3af; line-height: 1.4; }
+    .pill { display:inline-block; padding: 2px 8px; border-radius:999px; border:1px solid #1f2937; background:#0b1020; margin-left:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Office 50% Tracker <span class="pill" id="periodLabel"></span></h1>
+      <div class="small">
+        Mark days you went into the office. The app calculates how many in-office days you still need to hit 50% of working days.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="month">Month</label>
+          <input id="month" type="month" />
+        </div>
+
+        <div>
+          <label for="workPattern">Working days</label>
+          <select id="workPattern">
+            <option value="monfri">Mon–Fri</option>
+            <option value="all">All days</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="percent">Required %</label>
+          <select id="percent">
+            <option value="50">50%</option>
+            <option value="60">60%</option>
+            <option value="40">40%</option>
+          </select>
+        </div>
+
+        <div>
+          <label>&nbsp;</label>
+          <button class="primary" id="todayBtn">Jump to today</button>
+        </div>
+
+        <div>
+          <label>&nbsp;</label>
+          <button class="danger" id="resetBtn">Reset month</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <div class="metric">
+          <div class="label">Working days (total)</div>
+          <div class="value" id="mWorkingTotal">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Required in-office days</div>
+          <div class="value" id="mRequired">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">In-office done</div>
+          <div class="value" id="mDone">–</div>
+        </div>
+        <div class="metric">
+          <div class="label">Still needed</div>
+          <div class="value" id="mRemaining">–</div>
+        </div>
+      </div>
+      <div class="small" id="statusLine" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="small">
+        Tap a working day to cycle: <b>Blank → In office → Not in office → Blank</b>.
+        Weekends are muted when using Mon–Fri mode.
+      </div>
+
+      <div class="calendar" id="calendar">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
