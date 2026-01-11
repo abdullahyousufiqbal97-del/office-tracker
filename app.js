@@ -20,6 +20,8 @@ const holidayHint = $("holidayHint");
 
 const todayBtn = $("todayBtn");
 const resetBtn = $("resetBtn");
+const prevMonthBtn = $("prevMonth");
+const nextMonthBtn = $("nextMonth");
 
 // status values: "" | "in" | "out" | "ooo"
 function keyFor(ym) {
@@ -160,6 +162,13 @@ function getUKBankHolidaysEW(year) {
 function requiredDays(workingTotal, pct) {
   // Round up so 21 * 0.5 = 10.5 -> 11
   return Math.ceil(workingTotal * (pct / 100));
+}
+
+function shiftMonth(ym, delta) {
+  const { y, m } = parseYM(ym); // m 1–12
+  const d = new Date(y, m - 1, 1);
+  d.setMonth(d.getMonth() + delta);
+  return fmtYM(d.getFullYear(), d.getMonth() + 1);
 }
 
 // ===== Storage =====
@@ -357,7 +366,19 @@ function init() {
   patternSel.addEventListener("change", () => { persistSettings(); render(); });
   percentSel.addEventListener("change", () => { persistSettings(); render(); });
   ukHolsChk.addEventListener("change", () => { persistSettings(); render(); });
+prevMonthBtn.addEventListener("click", () => {
+  if (!monthInput.value) return;
+  monthInput.value = shiftMonth(monthInput.value, -1);
+  persistSettings();
+  render();
+});
 
+nextMonthBtn.addEventListener("click", () => {
+  if (!monthInput.value) return;
+  monthInput.value = shiftMonth(monthInput.value, +1);
+  persistSettings();
+  render();
+});
   todayBtn.addEventListener("click", () => {
     monthInput.value = fmtYM(now.getFullYear(), now.getMonth() + 1);
     persistSettings();
