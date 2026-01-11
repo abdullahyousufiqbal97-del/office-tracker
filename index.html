@@ -35,42 +35,48 @@
       padding: 8px; min-height: 64px; position: relative;
     }
     .day.muted { opacity: 0.35; }
-    /* Day number always visible */
+
+    /* Day number always visible (fixes phone overlap) */
     .day .num {
       font-size: 12px; color:#e5e7eb;
       position:absolute; left:8px; top:8px;
       z-index: 2;
-      padding: 1px 5px;
+      padding: 1px 6px;
       border-radius: 8px;
-      background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.10);
       backdrop-filter: blur(2px);
     }
 
-    /* Status badge moved to bottom-right so it never covers the date */
+    /* Status badge bottom-right so it doesn't cover date */
     .tag {
       position:absolute; right:8px; bottom:8px;
-      font-size: 11px; padding: 2px 7px; border-radius: 999px;
+      font-size: 11px; padding: 2px 8px; border-radius: 999px;
       border:1px solid #1f2937; background:#111827;
       z-index: 1;
-      max-width: 72%;
+      max-width: 76%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .tag.in { background:#064e3b; border-color:#065f46; }
     .tag.out { background:#3f1d1d; border-color:#7f1d1d; }
-    .tag.pto { background:#4c1d95; border-color:#6d28d9; }
+    .tag.ooo { background:#4c1d95; border-color:#6d28d9; }
     .tag.bh { background:#1e3a8a; border-color:#1d4ed8; }
     .tag.tap { opacity: 0.65; }
 
     .small { font-size: 12px; color:#9ca3af; line-height: 1.4; }
     .pill { display:inline-block; padding: 2px 8px; border-radius:999px; border:1px solid #1f2937; background:#0b1020; margin-left:6px; }
 
-    /* Simple checkbox styling */
     .chk { display:flex; align-items:center; gap:8px; padding: 10px; border-radius: 10px; border:1px solid #1f2937; background:#0b1020; }
     .chk input { width: 18px; height: 18px; }
     .hint { margin-top:10px; }
+
+    @media (max-width: 480px){
+      .day { min-height: 72px; }
+      .tag { font-size: 12px; padding: 3px 10px; }
+      .day .num { font-size: 13px; }
+    }
   </style>
 </head>
 <body>
@@ -78,8 +84,8 @@
     <div class="card">
       <h1>Office 50% Tracker <span class="pill" id="periodLabel"></span></h1>
       <div class="small">
-        Tap a day to cycle: <b>Blank → In → Out → PTO → Blank</b>.
-        PTO days and UK bank holidays (if enabled) are removed from “working days”.
+        Tap a day to cycle: <b>Blank → In → Out → OOO → Blank</b>.
+        OOO and UK bank holidays (if enabled) are removed from “working days”.
       </div>
     </div>
 
@@ -111,7 +117,7 @@
           <input id="ukHols" type="checkbox" />
           <div>
             <div style="font-size:12px; color:#e5e7eb;">Exclude UK bank holidays</div>
-            <div style="font-size:11px; color:#9ca3af;">England &amp; Wales rules (common holidays)</div>
+            <div style="font-size:11px; color:#9ca3af;">England &amp; Wales standard holidays</div>
           </div>
         </div>
 
@@ -146,7 +152,14 @@
           <div class="label">Still needed</div>
           <div class="value" id="mRemaining">–</div>
         </div>
+
+        <!-- NEW -->
+        <div class="metric">
+          <div class="label">Progress to target</div>
+          <div class="value" id="mProgress">–</div>
+        </div>
       </div>
+
       <div class="small" id="statusLine" style="margin-top:10px;"></div>
     </div>
 
