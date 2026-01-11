@@ -1,5 +1,5 @@
 // Offline cache (bump version when you deploy updates)
-const CACHE = "office50-v5";
+const CACHE = "office50-v16";
 const ASSETS = ["./", "./index.html", "./app.js", "./manifest.webmanifest", "./sw.js"];
 
 self.addEventListener("install", (event) => {
