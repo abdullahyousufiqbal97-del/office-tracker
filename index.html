@@ -91,10 +91,14 @@
 
     <div class="card">
       <div class="row">
-        <div>
-          <label for="month">Month</label>
-          <input id="month" type="month" />
-        </div>
+<div>
+  <label for="month">Month</label>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button id="prevMonth" type="button" title="Previous month">◀</button>
+    <input id="month" type="month" />
+    <button id="nextMonth" type="button" title="Next month">▶</button>
+  </div>
+</div>
 
         <div>
           <label for="workPattern">Working days</label>
