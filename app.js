@@ -12,13 +12,14 @@ const mWorkingTotal = $("mWorkingTotal");
 const mRequired = $("mRequired");
 const mDone = $("mDone");
 const mRemaining = $("mRemaining");
+const mProgress = $("mProgress");
 const statusLine = $("statusLine");
 const holidayHint = $("holidayHint");
 
 const todayBtn = $("todayBtn");
 const resetBtn = $("resetBtn");
 
-// status values: "" | "in" | "out" | "pto"
+// status values: "" | "in" | "out" | "ooo"
 function keyFor(ym) {
   return `office50:${ym}`;
 }
@@ -58,8 +59,8 @@ function isWorkingDayByPattern(dateObj, pattern) {
   return !isWeekend(dateObj);
 }
 
-// ===== UK Bank Holidays (England & Wales) =====
-// Note: This covers the standard recurring holidays. One-off specials (e.g., royal events) are not included.
+// ===== UK Bank Holidays (England & Wales standard recurring set) =====
+// Note: This covers standard recurring holidays. Rare one-off holidays aren't included.
 function easterSunday(year){
   // Anonymous Gregorian algorithm
   const a = year % 19;
@@ -104,35 +105,25 @@ function observedChristmasAndBoxing(year){
   const boxing = new Date(year, 11, 26);
 
   const xDow = xmas.getDay();
-  // Cases:
-  // - Xmas Sat (25) => observed Mon 27; Boxing Sun (26) => observed Tue 28
+  // Xmas Sat -> observed Mon 27; Boxing Sun -> observed Tue 28
   if (xDow === 6) {
-    return {
-      christmas: new Date(year, 11, 27),
-      boxing: new Date(year, 11, 28),
-    };
+    return { christmas: new Date(year, 11, 27), boxing: new Date(year, 11, 28) };
   }
-  // - Xmas Sun (25) => observed Tue 27; Boxing Mon (26) stays Mon 26
+  // Xmas Sun -> observed Tue 27; Boxing Mon stays Mon 26
   if (xDow === 0) {
-    return {
-      christmas: new Date(year, 11, 27),
-      boxing: boxing,
-    };
+    return { christmas: new Date(year, 11, 27), boxing: boxing };
   }
 
-  // Otherwise Christmas is weekday (Mon–Fri)
-  // Boxing day might still be Sat in some years (when Xmas is Fri).
+  // Otherwise Christmas weekday; Boxing might be Sat when Xmas is Fri
   const bDow = boxing.getDay();
   if (bDow === 6) {
-    return {
-      christmas: xmas,
-      boxing: new Date(year, 11, 28), // Sat -> Mon 28
-    };
+    return { christmas: xmas, boxing: new Date(year, 11, 28) };
   }
-  return {
-    christmas: xmas,
-    boxing: boxing,
-  };
+  return { christmas: xmas, boxing: boxing };
+}
+
+function dateToYMD(d){
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 }
 
 function getUKBankHolidaysEW(year){
@@ -143,13 +134,11 @@ function getUKBankHolidaysEW(year){
 
   // Easter-related
   const easter = easterSunday(year);
-  const goodFriday = addDays(easter, -2);
-  const easterMon = addDays(easter, 1);
-  set.add(dateToYMD(goodFriday));
-  set.add(dateToYMD(easterMon));
+  set.add(dateToYMD(addDays(easter, -2))); // Good Friday
+  set.add(dateToYMD(addDays(easter, 1)));  // Easter Monday
 
   // Early May: first Monday in May
-  set.add(dateToYMD(firstMondayOfMonth(year, 4))); // May (0=Jan)
+  set.add(dateToYMD(firstMondayOfMonth(year, 4))); // May
 
   // Spring: last Monday in May
   set.add(dateToYMD(lastMondayOfMonth(year, 4)));
@@ -157,16 +146,12 @@ function getUKBankHolidaysEW(year){
   // Summer: last Monday in August
   set.add(dateToYMD(lastMondayOfMonth(year, 7))); // Aug
 
-  // Christmas + Boxing (observed rules)
+  // Christmas + Boxing (observed)
   const cx = observedChristmasAndBoxing(year);
   set.add(dateToYMD(cx.christmas));
   set.add(dateToYMD(cx.boxing));
 
   return set;
-}
-
-function dateToYMD(d){
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 }
 
 // ===== Required days =====
@@ -179,7 +164,20 @@ function requiredDays(workingTotal, pct) {
 function loadState(ym) {
   const raw = localStorage.getItem(keyFor(ym));
   if (!raw) return {};
-  try { return JSON.parse(raw); } catch { return {}; }
+  try {
+    const obj = JSON.parse(raw);
+
+    // Migrate old "pto" to "ooo" (if any exist from older builds)
+    let changed = false;
+    for (const k of Object.keys(obj)) {
+      if (obj[k] === "pto") { obj[k] = "ooo"; changed = true; }
+    }
+    if (changed) localStorage.setItem(keyFor(ym), JSON.stringify(obj));
+
+    return obj;
+  } catch {
+    return {};
+  }
 }
 
 function saveState(ym, state) {
@@ -196,8 +194,7 @@ function render() {
   const excludeUKHols = !!ukHolsChk.checked;
 
   const bankHols = excludeUKHols ? getUKBankHolidaysEW(y) : new Set();
-
-  const state = loadState(ym); // map dayNum -> ""|"in"|"out"|"pto"
+  const state = loadState(ym); // map dayNum -> ""|"in"|"out"|"ooo"
   const dim = daysInMonth(y, m);
 
   periodLabel.textContent = new Date(y, m - 1, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
@@ -206,7 +203,7 @@ function render() {
     ? "UK bank holidays are excluded automatically (England & Wales standard holidays)."
     : "UK bank holidays are currently NOT excluded.";
 
-  // Build header row (Mon-first)
+  // Header row (Mon-first)
   cal.innerHTML = "";
   const dows = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   for (const d of dows) {
@@ -216,11 +213,11 @@ function render() {
     cal.appendChild(el);
   }
 
-  // Determine first day offset (Mon-first)
+  // First day offset (Mon-first)
   const first = new Date(y, m - 1, 1);
   const firstDowMon0 = (first.getDay() + 6) % 7;
 
-  // Add blanks
+  // Leading blanks
   for (let i = 0; i < firstDowMon0; i++) {
     const blank = document.createElement("div");
     blank.className = "day muted";
@@ -228,11 +225,9 @@ function render() {
     cal.appendChild(blank);
   }
 
-  // Count totals
-  let workingTotal = 0; // eligible working days AFTER excluding bank hols and PTO
+  let workingTotal = 0; // eligible working days AFTER excluding bank hols and OOO
   let done = 0;
 
-  // For status line
   const today = new Date();
   const inSameMonth = (today.getFullYear() === y && (today.getMonth() + 1) === m);
   let workingElapsed = 0;
@@ -245,10 +240,10 @@ function render() {
     const baseWorking = isWorkingDayByPattern(dateObj, pattern);
     const isBankHol = excludeUKHols && bankHols.has(dateKey);
 
-    const status = state[day] || ""; // "", "in", "out", "pto"
+    const status = state[day] || ""; // "", "in", "out", "ooo"
 
-    // Eligible working day: base working AND not a bank holiday AND not PTO
-    const eligibleWorking = baseWorking && !isBankHol && status !== "pto";
+    // Eligible working day: base working AND not a bank holiday AND not OOO
+    const eligibleWorking = baseWorking && !isBankHol && status !== "ooo";
 
     if (eligibleWorking) workingTotal++;
     if (eligibleWorking && status === "in") done++;
@@ -258,137 +253,14 @@ function render() {
       if (eligibleWorking && day > today.getDate()) workingLeft++;
     }
 
-    // Render cell
     const cell = document.createElement("div");
     cell.className = "day" + (baseWorking ? "" : " muted");
     cell.dataset.day = String(day);
 
-    // Day number
     const num = document.createElement("div");
     num.className = "num";
     num.textContent = day;
     cell.appendChild(num);
 
-    // Determine tag
     if (isBankHol && baseWorking) {
-      const tag = document.createElement("div");
-      tag.className = "tag bh";
-      tag.textContent = "Bank hol";
-      cell.appendChild(tag);
-      // Bank holiday treated as non-working when excluded; disable clicking
-      cell.classList.add("muted");
-    } else if (status) {
-      const tag = document.createElement("div");
-      tag.className = "tag " + status;
-      tag.textContent = status === "in" ? "In" : (status === "out" ? "Out" : "PTO");
-      cell.appendChild(tag);
-      if (status === "pto") cell.classList.add("muted"); // visually indicate removed from working days
-    } else if (baseWorking) {
-      const tag = document.createElement("div");
-      tag.className = "tag tap";
-      tag.textContent = "Tap";
-      cell.appendChild(tag);
-    }
-
-    // Click logic:
-    // - If baseWorking false: ignore (weekends in Mon–Fri)
-    // - If bank holiday excluded: ignore
-    cell.addEventListener("click", () => {
-      if (!baseWorking) return;
-      if (isBankHol) return;
-
-      const cur = state[day] || "";
-      // cycle: "" -> in -> out -> pto -> ""
-      const next = cur === "" ? "in" : (cur === "in" ? "out" : (cur === "out" ? "pto" : ""));
-      if (next === "") delete state[day];
-      else state[day] = next;
-
-      saveState(ym, state);
-      render();
-    });
-
-    cal.appendChild(cell);
-  }
-
-  const req = requiredDays(workingTotal, pct);
-  const remaining = Math.max(0, req - done);
-
-  mWorkingTotal.textContent = String(workingTotal);
-  mRequired.textContent = String(req);
-  mDone.textContent = String(done);
-  mRemaining.textContent = String(remaining);
-
-  if (inSameMonth) {
-    statusLine.textContent =
-      `Eligible working days elapsed: ${workingElapsed}. Eligible working days left: ${workingLeft}. ` +
-      (remaining === 0
-        ? "You’ve already hit the requirement for this month."
-        : `You still need ${remaining} in-office day(s) to meet the target.`);
-  } else {
-    statusLine.textContent =
-      (remaining === 0
-        ? "Requirement met for this month based on your entries."
-        : `You still need ${remaining} in-office day(s) to meet the target for this month.`);
-  }
-}
-
-function init() {
-  const now = new Date();
-  const ym = fmtYM(now.getFullYear(), now.getMonth() + 1);
-
-  // Load settings
-  const settingsRaw = localStorage.getItem("office50:settings");
-  if (settingsRaw) {
-    try {
-      const s = JSON.parse(settingsRaw);
-      monthInput.value = s.month || ym;
-      if (s.pattern) patternSel.value = s.pattern;
-      if (s.pct) percentSel.value = String(s.pct);
-      ukHolsChk.checked = !!s.ukHols;
-    } catch {
-      monthInput.value = ym;
-      ukHolsChk.checked = true;
-    }
-  } else {
-    monthInput.value = ym;
-    ukHolsChk.checked = true; // default ON for UK holidays
-  }
-
-  const persistSettings = () => {
-    localStorage.setItem("office50:settings", JSON.stringify({
-      month: monthInput.value,
-      pattern: patternSel.value,
-      pct: Number(percentSel.value),
-      ukHols: !!ukHolsChk.checked
-    }));
-  };
-
-  monthInput.addEventListener("change", () => { persistSettings(); render(); });
-  patternSel.addEventListener("change", () => { persistSettings(); render(); });
-  percentSel.addEventListener("change", () => { persistSettings(); render(); });
-  ukHolsChk.addEventListener("change", () => { persistSettings(); render(); });
-
-  todayBtn.addEventListener("click", () => {
-    monthInput.value = fmtYM(now.getFullYear(), now.getMonth() + 1);
-    persistSettings();
-    render();
-    const d = now.getDate();
-    const cell = cal.querySelector(`[data-day="${d}"]`);
-    if (cell) cell.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
-
-  resetBtn.addEventListener("click", () => {
-    const ym = monthInput.value;
-    if (!ym) return;
-    localStorage.removeItem(keyFor(ym));
-    render();
-  });
-
-  render();
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  }
-}
-
-init();
+     
