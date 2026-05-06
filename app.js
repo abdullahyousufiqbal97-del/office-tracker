@@ -315,8 +315,14 @@ function render() {
   mDone.textContent = String(done);
   mRemaining.textContent = String(remaining);
 
-  const progressPct = req === 0 ? 100 : Math.min(100, Math.round((done / req) * 100));
-  mProgress.textContent = `${progressPct}% (${done}/${req})`;
+const progressPct = workingTotal === 0 ? 0 : Math.round((done / workingTotal) * 100);
+const nextDayPct = workingTotal === 0 ? 0 : Math.round(((done + 1) / workingTotal) * 100);
+
+mProgress.textContent = `${progressPct}% (${done}/${workingTotal})`;
+
+if (remaining > 0 && done < workingTotal) {
+  statusLine.textContent += ` One more in-office day would take you to ${nextDayPct}%.`;
+}
 
   if (inSameMonth) {
     statusLine.textContent =
